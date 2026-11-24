@@ -142,3 +142,40 @@ resync_dac_volume() {
 	# Both writes in one amixer (batch mode reads commands from stdin).
 	printf 'cset "%s" %s,%s\ncset "%s" %s,%s\n' "$_ctl" $_near $_near "$_ctl" $_raw $_raw | amixer -q -s
 }
+
+# D-Bus's system bus, for basedos-pipewire and basedos-bluetooth (bluez and WirePlumber's
+# Bluetooth monitor talk over it). Started by the first of them, stopped by the last
+# (dbus_down). Its user (dbus, from dbus's system.conf) is added to /data/etc on devices whose
+# accounts predate it; the machine ID is BasedOS's (/data/machine-id).
+DBUS_PID=/run/messagebus.pid
+dbus_up() {
+	[ -f $DBUS_PID ] && kill -0 "$(cat $DBUS_PID)" 2>/dev/null && return 0
+	grep -q '^dbus:' /data/etc/passwd 2>/dev/null ||
+		echo 'dbus:x:81:81:dbus:/run/dbus:/bin/false' >> /data/etc/passwd
+	grep -q '^dbus:' /data/etc/group 2>/dev/null || echo 'dbus:x:81:' >> /data/etc/group
+	mkdir -p /run/dbus /var/lib/dbus
+	ln -sf /data/machine-id /var/lib/dbus/machine-id
+	rm -f $DBUS_PID /run/dbus/system_bus_socket
+	dbus-daemon --system || { log "dbus-daemon didn't start"; return 1; }
+	log "D-Bus system bus started"
+}
+# dbus_down <the caller's own pid file>: stop the bus unless the other user of it still runs.
+dbus_down() {
+	for _p in /run/basedos/pipewire.pid /run/basedos/bluetoothd.pid; do
+		[ "$_p" = "$1" ] && continue
+		[ -f "$_p" ] && kill -0 "$(cat "$_p")" 2>/dev/null && return 0
+	done
+	[ -f $DBUS_PID ] && kill "$(cat $DBUS_PID)" 2>/dev/null && log "D-Bus system bus stopped"
+	rm -f $DBUS_PID /run/dbus/system_bus_socket
+}
+
+# stop_pidfile <file>: TERM the process it names, KILL it after 1 s, remove the file.
+stop_pidfile() {
+	[ -f "$1" ] || return 0
+	_pid=$(cat "$1")
+	kill "$_pid" 2>/dev/null
+	_i=0
+	while kill -0 "$_pid" 2>/dev/null && [ $_i -lt 20 ]; do usleep 50000; _i=$((_i + 1)); done
+	kill -9 "$_pid" 2>/dev/null
+	rm -f "$1"
+}

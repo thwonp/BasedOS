@@ -1,0 +1,60 @@
+#!/bin/sh
+# basedos-pipewire start|stop|status: PipeWire, its PulseAudio server and WirePlumber, for
+# frontends that want a sound server (several programs at once, per-stream volume, Bluetooth
+# audio). Not started at boot: spruce opens ALSA directly, and so does every frontend that
+# doesn't ask for this.
+#
+#   start   D-Bus's system bus (if not up), then pipewire, wireplumber and pipewire-pulse, as root,
+#           system-wide; returns once PipeWire's socket is there (5 s at most). Nothing if running.
+#   stop    the three, and the bus unless basedos-bluetooth still uses it.
+#   status  exit 0 if pipewire runs.
+#
+# Clients find it through XDG_RUNTIME_DIR=/run/user/0 (pipewire-0, pulse/native): the frontend
+# exports that for itself and what it starts. ALSA's "default" is left alone; a frontend that wants
+# its ALSA programs on PipeWire puts this in its own ~/.asoundrc:
+#     pcm.!default pipewire
+#     ctl.!default pipewire
+# Daemon output goes to /run/basedos/pipewire.log (RAM). Bluetooth audio needs basedos-bluetooth too.
+. /usr/lib/basedos/functions
+RT=/run/user/0
+PID=/run/basedos/pipewire.pid
+WP=/run/basedos/wireplumber.pid
+PP=/run/basedos/pipewire-pulse.pid
+OUT=/run/basedos/pipewire.log
+
+running() { [ -f $PID ] && kill -0 "$(cat $PID)" 2>/dev/null; }
+
+case "$1" in
+start)
+	running && exit 0
+	mkdir -p $RT /run/basedos && chmod 700 $RT
+	dbus_up || exit 1
+	export XDG_RUNTIME_DIR=$RT DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
+	rm -f $RT/pipewire-0 $RT/pipewire-0.lock
+	pipewire >> $OUT 2>&1 &
+	echo $! > $PID
+	_i=0
+	while [ ! -S $RT/pipewire-0 ] && [ $_i -lt 100 ]; do usleep 50000; _i=$((_i + 1)); done
+	[ -S $RT/pipewire-0 ] || { log "pipewire didn't make its socket (see $OUT)"; stop_pidfile $PID; exit 1; }
+	wireplumber >> $OUT 2>&1 &
+	echo $! > $WP
+	pipewire-pulse >> $OUT 2>&1 &
+	echo $! > $PP
+	log "PipeWire started (XDG_RUNTIME_DIR=$RT)"
+	;;
+stop)
+	running || [ -f $WP ] || [ -f $PP ] || exit 0
+	stop_pidfile $PP
+	stop_pidfile $WP
+	stop_pidfile $PID
+	dbus_down $PID
+	log "PipeWire stopped"
+	;;
+status)
+	running
+	;;
+*)
+	echo "usage: ${0##*/} start|stop|status" >&2
+	exit 2
+	;;
+esac
