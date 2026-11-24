@@ -1,2 +1,3 @@
 # BasedOS packages of its own.
 source "$BR2_EXTERNAL_BASEDOS_PATH/package/flac13/Config.in"
+source "$BR2_EXTERNAL_BASEDOS_PATH/package/luajit-lib/Config.in"

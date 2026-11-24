@@ -1,0 +1,7 @@
+config BR2_PACKAGE_LUAJIT_LIB
+	bool "luajit-lib"
+	depends on BR2_aarch64
+	help
+	  LuaJIT's shared library only (libluajit-5.1.so.2), which
+	  PortMaster's ports load, beside Lua 5.4 for WirePlumber.
+	  Buildroot's luajit excludes lua (both provide luainterpreter).
