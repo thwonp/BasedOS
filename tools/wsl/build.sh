@@ -1,10 +1,12 @@
 #!/bin/sh
-# Full BasedOS build (the system layer, the initrd, the boot scripts, the recovery card's files) in
-# WSL from the repo on /mnt/e.
+# Full BasedOS build (the system layer, the initrd, the boot scripts, the recovery card's files), in
+# WSL or on any Linux host (tools/container/run.sh runs it in the build container).
+#   BASEDOS_WORK   work folder (default ~/basedos-work)
+#   BASEDOS_STOCK  the prepared stock build (default prepared/rocknix-20260613-c8ed06c)
 set -eu
-REPO=/mnt/e/projects/spruceOS-gkd350hultra/basedos
-W=$HOME/basedos-work
-STOCK=$REPO/prepared/rocknix-20260613-c8ed06c
+REPO=$(cd "$(dirname "$0")/../.." && pwd)
+W=${BASEDOS_WORK:-$HOME/basedos-work}
+STOCK=${BASEDOS_STOCK:-$REPO/prepared/rocknix-20260613-c8ed06c}
 mkdir -p "$W" "$REPO/out"
 # A build that stops part-way must not leave a release-able out/: the manifest of a whole build
 # (out/build.sha256, written last) goes first; tools/wsl/release.sh needs it.
