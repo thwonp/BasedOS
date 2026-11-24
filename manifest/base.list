@@ -145,3 +145,34 @@
 # pack don't see flip/lib (westonwrap.sh sets its own library path), so for them it must be the
 # system's. build-rootfs.sh adds the unversioned libopenal.so that LWJGL 2 looks for.
 /usr/lib/libopenal.so.1
+
+## sound server and Bluetooth, for frontends that want them (plorpOS; nothing starts them at boot):
+## PipeWire with its PulseAudio server and ALSA plugin (pcm.pipewire; ALSA's default is left
+## alone, a frontend points it at PipeWire in its own .asoundrc), WirePlumber, pactl, D-Bus's
+## system bus, bluez5 and the HCI attach tools. Their plugins and configs are loaded by name.
+/usr/bin/pipewire
+/usr/bin/pipewire-pulse
+/usr/bin/wireplumber
+/usr/bin/wpctl
+/usr/bin/pw-cli
+/usr/bin/pw-dump
+/usr/bin/pw-cat
+/usr/bin/pw-play
+/usr/bin/pactl
+/usr/lib/pipewire-0.3
+/usr/lib/spa-0.2
+/usr/lib/wireplumber-0.5
+/usr/lib/alsa-lib
+/usr/share/pipewire
+/usr/share/wireplumber
+/usr/bin/dbus-daemon
+/usr/bin/dbus-send
+/usr/libexec/dbus-daemon-launch-helper
+/usr/share/dbus-1
+/etc/dbus-1
+/usr/libexec/bluetooth
+/usr/bin/bluetoothctl
+/usr/bin/btattach
+/usr/bin/hciattach
+/usr/bin/hciconfig
+/etc/bluetooth

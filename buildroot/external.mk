@@ -37,3 +37,20 @@ define BASEDOS_LIB32_GCONV
 endef
 TARGET_FINALIZE_HOOKS += BASEDOS_LIB32_GCONV
 endif
+
+# PipeWire's ALSA config: pcm.pipewire stays (50-pipewire.conf), but not 99-pipewire-default.conf,
+# which would send every program's "default" device to PipeWire whether it runs or not. A frontend
+# that runs PipeWire points "default" at it in its own ~/.asoundrc.
+define BASEDOS_PIPEWIRE_ALSA_DEFAULT_OFF
+	rm -f $(TARGET_DIR)/usr/share/alsa/alsa.conf.d/99-pipewire-default.conf
+endef
+PIPEWIRE_POST_INSTALL_TARGET_HOOKS += BASEDOS_PIPEWIRE_ALSA_DEFAULT_OFF
+
+# pactl and libpulse find libpulsecommon in /usr/lib/pulseaudio by their RUNPATH; the system
+# layer's library closure (tools/harvest.py) looks in /usr/lib only. A link there.
+define BASEDOS_PULSECOMMON_LINK
+	for f in $(TARGET_DIR)/usr/lib/pulseaudio/libpulsecommon-*.so; do \
+		ln -sf pulseaudio/$${f##*/} $(TARGET_DIR)/usr/lib/$${f##*/}; \
+	done
+endef
+PULSEAUDIO_POST_INSTALL_TARGET_HOOKS += BASEDOS_PULSECOMMON_LINK
