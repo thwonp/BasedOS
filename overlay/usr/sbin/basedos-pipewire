@@ -4,9 +4,18 @@
 # audio). Not started at boot: spruce opens ALSA directly, and so does every frontend that
 # doesn't ask for this.
 #
-#   start   D-Bus's system bus (if not up), then pipewire, wireplumber and pipewire-pulse, as root,
-#           system-wide; returns once PipeWire's socket is there (5 s at most). Nothing if running.
-#   stop    the three, and the bus unless basedos-bluetooth still uses it.
+#   start   the DAC to full (stock does the same at boot: below 100% the 350H Ultra's speaker is
+#           all but silent at any PipeWire volume), udev for the sound cards (if not up), D-Bus's
+#           system bus (if not up), then pipewire, wireplumber and pipewire-pulse, as root,
+#           system-wide; returns once PipeWire's socket is there (5 s at most). Once the PulseAudio
+#           server answers, module-switch-on-connect as stock loads it: a headset or DAC that
+#           connects becomes the default. Nothing if running.
+#   stop    the three, the udevd start started, and the bus unless basedos-bluetooth still uses it.
+#
+# udev: PipeWire's ALSA monitor finds cards only in udev's database, so without udevd there is
+# only a dummy sink. start runs udevd with 78-sound-card.rules (it also names USB DACs by vendor)
+# and keeps it up for hotplug, filling the database for input devices too, so basedos-udev's
+# users (which leave an already running udevd alone) still find theirs.
 #   status  exit 0 if pipewire runs.
 #
 # Clients find it through XDG_RUNTIME_DIR=/run/user/0 (pipewire-0, pulse/native): the frontend
@@ -21,6 +30,7 @@ PID=/run/basedos/pipewire.pid
 WP=/run/basedos/wireplumber.pid
 PP=/run/basedos/pipewire-pulse.pid
 OUT=/run/basedos/pipewire.log
+UDEV_OURS=/run/basedos/udev-pipewire
 
 running() { [ -f $PID ] && kill -0 "$(cat $PID)" 2>/dev/null; }
 
@@ -28,6 +38,13 @@ case "$1" in
 start)
 	running && exit 0
 	mkdir -p $RT /run/basedos && chmod 700 $RT
+	amixer -c 0 -q sset Digital 100% 2>> $OUT
+	if ! pidof udevd > /dev/null; then
+		mkdir -p /run/udev
+		udevd --daemon --resolve-names=never && : > $UDEV_OURS
+		udevadm trigger --subsystem-match=sound --subsystem-match=input --action=add
+		udevadm settle --timeout=5
+	fi
 	dbus_up || exit 1
 	export XDG_RUNTIME_DIR=$RT DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
 	rm -f $RT/pipewire-0 $RT/pipewire-0.lock
@@ -40,6 +57,14 @@ start)
 	echo $! > $WP
 	pipewire-pulse >> $OUT 2>&1 &
 	echo $! > $PP
+	(
+		_i=0
+		until pactl info > /dev/null 2>&1; do
+			[ $_i -ge 50 ] && exit
+			usleep 100000; _i=$((_i + 1))
+		done
+		pactl load-module module-switch-on-connect blocklist="DirtyWave_M8|hdmi" > /dev/null
+	) >> $OUT 2>&1 &
 	log "PipeWire started (XDG_RUNTIME_DIR=$RT)"
 	;;
 stop)
@@ -47,6 +72,10 @@ stop)
 	stop_pidfile $PP
 	stop_pidfile $WP
 	stop_pidfile $PID
+	if [ -e $UDEV_OURS ]; then
+		rm -f $UDEV_OURS
+		udevadm control --exit 2>/dev/null || killall udevd 2>/dev/null
+	fi
 	dbus_down $PID
 	log "PipeWire stopped"
 	;;

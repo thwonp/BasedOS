@@ -104,6 +104,9 @@
 /usr/sbin/udevd
 /usr/bin/udevadm
 /usr/lib/udev/rules.d/60-input-id.rules
+## and the sound cards', for basedos-pipewire (PipeWire's ALSA monitor reads udev's database; the
+## rule also names USB DACs by vendor and model)
+/usr/lib/udev/rules.d/78-sound-card.rules
 
 ## for PortMaster's ports (2026-11-19)
 /usr/lib/libluajit-5.1.so.2
