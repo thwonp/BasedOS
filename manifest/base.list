@@ -168,6 +168,7 @@
 /usr/lib/alsa-lib
 /usr/share/pipewire
 /usr/share/wireplumber
+/usr/share/alsa-card-profile
 /usr/bin/dbus-daemon
 /usr/bin/dbus-send
 /usr/libexec/dbus-daemon-launch-helper
