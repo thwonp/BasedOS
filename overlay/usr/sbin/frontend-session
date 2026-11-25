@@ -95,6 +95,8 @@ stay_down() {
 # display's owner while no program is. A frontend that draws on the framebuffer itself never
 # changes what's shown, so its picture is never drawn over. Ends with the frontend.
 intermission_when_covered() {
+	# The boot logo is what should show through: left as it is.
+	[ -f $STATE/boot-logo ] && return 0
 	_dbg=$STATE/debugfs
 	mkdir -p $_dbg
 	grep -q " $_dbg debugfs " /proc/mounts || mount -t debugfs none $_dbg 2>/dev/null || return 0
@@ -118,23 +120,30 @@ intermission_when_covered() {
 	) </dev/null >/dev/null 2>&1 & )
 }
 
+# starting <screen text> <log text>: the boot logo while a frontend starts (boot_logo; drawn again
+# only if a text screen has covered it since), else the text screen.
+starting() {
+	log "$2"
+	[ -f $STATE/boot-logo ] || boot_logo || splash "$1"
+}
+
 # run_frontend <entry>: exec one of the card's frontends, the way its kind is started.
 run_frontend() {
 	case "$1" in
 	System/frontend)
-		say "Starting frontend..." "starting System/frontend"
+		starting "Starting frontend..." "starting System/frontend"
 		intermission_when_covered
 		exec /lib/ld-linux-aarch64.so.1 "$SD/System/frontend" > /tmp/frontend.log 2>&1 ;;
 	spruce/scripts/runtime.sh)
-		say "Starting spruce..." "starting spruce"
+		starting "Starting spruce..." "starting spruce"
 		intermission_when_covered
 		exec /bin/sh "$SD/$1" ;;
 	*.sh|.tmp_update/updater)
-		say "Starting frontend..." "starting $1"
+		starting "Starting frontend..." "starting $1"
 		intermission_when_covered
 		exec /bin/sh "$SD/$1" ;;
 	*)
-		say "Starting frontend..." "starting $1"
+		starting "Starting frontend..." "starting $1"
 		intermission_when_covered
 		exec "$SD/$1" ;;
 	esac

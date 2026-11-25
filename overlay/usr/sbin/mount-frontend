@@ -78,6 +78,8 @@ if ! try; then
 	repair "it would not mount" && try || { log "can't mount $dev (${type:-no filesystem})"; exit 1; }
 fi
 echo "$cid" > $MOUNTED_CID
-say "SD card ready" "card $dev on $SD ($type)"
+# Only on a screen that said something else first (a check, waiting for a card): over the boot
+# logo it is a flash of text on a normal boot, and the log has it.
+if logo_up; then log "card $dev on $SD ($type)"; else say "SD card ready" "card $dev on $SD ($type)"; fi
 mark card
 exit 0

@@ -29,7 +29,13 @@ for v in /sys/class/vtconsole/vtcon*; do
 	grep -q "frame buffer" "$v/name" 2>/dev/null && echo 0 > "$v/bind" 2>/dev/null
 done
 splash_boot_info
-splash "Starting..."
+# The bootloader's logo when there is one (boot_logo), drawn beside the boot rather than in its way.
+if [ -f "$BOOT_LOGO" ]; then
+	boot_logo &
+	echo $! > /run/basedos/boot-logo.pid
+else
+	splash "Starting..."
+fi
 
 # /data: v0 lives in a folder on eMMC p2, next to stock's /storage, so stock
 # still boots unchanged. (A dedicated p2 comes with the installer.) Checked first, as stock

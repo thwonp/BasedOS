@@ -17,7 +17,37 @@ log() {
 # /run/basedos/splash ('!' first = highlighted) and a status line. It draws to the framebuffer,
 # which the panel shows while no frontend owns the display; with a frontend up it's not seen.
 SPLASH_INFO=/run/basedos/splash
-splash() { [ -x /usr/bin/basedos-splash ] && /usr/bin/basedos-splash "$@" >/dev/null 2>&1; }
+# A text screen waits for a boot logo being drawn (boot_logo, in the background), so the logo never
+# lands over it, and then covers the logo.
+splash() {
+	_lp=$(cat /run/basedos/boot-logo.pid 2>/dev/null)
+	while [ -n "$_lp" ] && kill -0 "$_lp" 2>/dev/null; do usleep 10000; done
+	rm -f /run/basedos/boot-logo
+	[ -x /usr/bin/basedos-splash ] && /usr/bin/basedos-splash "$@" >/dev/null 2>&1
+}
+
+# boot_logo: the bootloader's logo on the screen again (plorpOS, plorpos-gkd.94.26). U-Boot shows
+# it from power-on; the kernel takes the screen a couple of seconds in, and a normal boot then
+# shows this until the frontend's first frame, instead of BasedOS's text screen: one picture from
+# power-on to the frontend. 1, having
+# drawn nothing, without a logo basedos-splash can show (the caller draws the text screen then).
+# About 0.12 s; /run/basedos/boot-logo says the logo is what the framebuffer holds. BasedOS's own
+# picture of it when there is one (BOOT_LOGO in its folder: plorpOS's labels the boot keys,
+# which work from now on), else the bootloader's own.
+BOOT_LOGO=/boot/basedos/boot-logo.bmp.gz
+[ -f $BOOT_LOGO ] || BOOT_LOGO=/boot/.backup/logo_mini_plus.bmp.gz
+boot_logo() {
+	[ -f $BOOT_LOGO ] && [ -x /usr/bin/basedos-splash ] &&
+		gzip -dc $BOOT_LOGO 2>/dev/null | /usr/bin/basedos-splash --bmp - >/dev/null 2>&1 &&
+		touch /run/basedos/boot-logo
+}
+
+# logo_up: the boot logo is on the screen, or being drawn (boot_logo).
+logo_up() {
+	[ -f /run/basedos/boot-logo ] && return 0
+	_lp=$(cat /run/basedos/boot-logo.pid 2>/dev/null)
+	[ -n "$_lp" ] && kill -0 "$_lp" 2>/dev/null
+}
 
 # say <screen text> [<log text>]: show a short message as the boot screen's status line, and log
 # it (or the details, if given: paths and codes are for the log, not the screen).

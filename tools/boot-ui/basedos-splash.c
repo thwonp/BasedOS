@@ -5,6 +5,7 @@
  *   basedos-splash [-r 0|90|270] [status text...]
  *   basedos-splash [-r 0|90|270] --centre text...
  *   basedos-splash --console graphics|text
+ *   basedos-splash --bmp FILE|-
  *
  * Every call redraws the whole screen (about 9 MB, a few ms). The layout is a grid on the screen
  * as held (landscape):
@@ -41,6 +42,10 @@
  * in text mode a moment after the frontend exits, and the text console clears the screen then;
  * "graphics" waits for that (up to 5 s), then puts the console in graphics mode, where the text
  * console draws nothing (as boot splash programs do). "text" puts it back.
+ *
+ * --bmp: an uncompressed 24-bit BMP of the framebuffer's own size and layout (not turned), from
+ * FILE or stdin, and nothing else: the bootloader's logo shown again once the kernel has taken the
+ * screen (plorpOS: frontend-session's boot_logo). Exits 1 having drawn nothing for any other image.
  *
  * Font: converted from Terminus Font (tools/boot-ui/font.h, OFL-Terminus.txt).
  */
@@ -223,6 +228,51 @@ static int console_mode(const char *mode)
 	return r != 0;
 }
 
+static uint32_t le32(const uint8_t *p) { return p[0] | p[1] << 8 | p[2] << 16 | (uint32_t)p[3] << 24; }
+
+/* --bmp: the whole image is read and checked before a pixel is written. */
+static int draw_bmp(const char *path)
+{
+	FILE *f = strcmp(path, "-") ? fopen(path, "rb") : stdin;
+	uint8_t h[54];
+	int bpp = (int)vi.bits_per_pixel / 8;
+
+	if (!f || fread(h, 1, sizeof(h), f) != sizeof(h) || h[0] != 'B' || h[1] != 'M')
+		return 1;
+	int32_t w = (int32_t)le32(h + 18), ht = (int32_t)le32(h + 22);
+	int down = ht < 0;
+	uint32_t off = le32(h + 10);
+
+	if (down)
+		ht = -ht;
+	if ((h[28] | h[29] << 8) != 24 || le32(h + 30) != 0 || w != (int)vi.xres || ht != (int)vi.yres || off < sizeof(h))
+		return 1;
+	for (uint32_t k = sizeof(h); k < off; k++)
+		if (fgetc(f) == EOF)
+			return 1;
+	size_t stride = ((size_t)w * 3 + 3) & ~(size_t)3;
+	uint8_t *img = malloc(stride * (size_t)ht), *row = malloc((size_t)w * bpp);
+
+	if (!img || !row || fread(img, 1, stride * (size_t)ht, f) != stride * (size_t)ht)
+		return 1;
+	for (int y = 0; y < ht; y++) {
+		const uint8_t *s = img + stride * (size_t)(down ? y : ht - 1 - y);
+
+		for (int x = 0; x < w; x++, s += 3) {
+			uint32_t px = pack((uint32_t)s[2] << 16 | s[1] << 8 | s[0]);
+			uint8_t *d = row + (size_t)x * bpp;
+
+			switch (bpp) {
+			case 4: memcpy(d, &px, 4); break;
+			case 3: d[0] = px; d[1] = px >> 8; d[2] = px >> 16; break;
+			case 2: d[0] = px; d[1] = px >> 8; break;
+			}
+		}
+		memcpy(fb + (size_t)y * fi.line_length, row, (size_t)w * bpp);
+	}
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	int fd, i = 1, n = 0, req = -1, centre = 0;
@@ -232,8 +282,14 @@ int main(int argc, char **argv)
 	size_t size;
 	uint8_t *map;
 
+	const char *bmp = NULL;
+
 	if (argc == 3 && strcmp(argv[1], "--console") == 0)
 		return console_mode(argv[2]);
+	if (argc == 3 && strcmp(argv[1], "--bmp") == 0) {
+		bmp = argv[2];
+		i = argc;
+	}
 	if (argc > 2 && strcmp(argv[1], "-r") == 0) {
 		req = atoi(argv[2]);
 		i = 3;
@@ -282,6 +338,11 @@ int main(int argc, char **argv)
 			return 1;
 	}
 	fb = map + (size_t)vi.yoffset * fi.line_length + (size_t)vi.xoffset * (vi.bits_per_pixel / 8);
+	if (bmp) {
+		if (draw_bmp(bmp))
+			return 1;
+		goto out;
+	}
 
 	/* A portrait framebuffer is shown turned (default 270, as BasedOS's SDL); landscape never is. */
 	rot = vi.yres > vi.xres ? (req == 90 || req == 0 ? req : 270) : 0;
