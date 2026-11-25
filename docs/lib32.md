@@ -16,8 +16,8 @@ The same as stock's, so ports built for ROCKNIX find what they expect:
 | What | Where | From |
 |---|---|---|
 | glibc's 32-bit loader | `/usr/lib32/ld-linux-armhf.so.3`, linked from `/usr/lib/ld-linux-armhf.so.3` (armhf programs' PT_INTERP is `/lib/ld-linux-armhf.so.3`) | system layer |
-| glibc and its iconv modules (`/usr/lib32/gconv`), GCC's runtime, SDL2's add-ons, the libraries of `manifest/base.list` that ports use, OpenAL, mpg123, libmodplug, and what else of stock's `/usr/lib32` Buildroot has (SDL2_gfx, libltdl, opusfile, pixman, speex, Tremor, zstd) | `/usr/lib32` | system layer: BasedOS's 32-bit Buildroot root (`buildroot/configs/basedos_gkd350hultra_armhf_defconfig`), the paths `manifest/base32.list` names plus what they need |
-| SDL2 and librga | `/usr/lib32` | system layer: BasedOS's own (`SDL2_ARCH=armhf tools/sdl2/build.sh`), the same patches as the 64-bit one, so 32-bit ports get the turned picture too |
+| glibc and its iconv modules (`/usr/lib32/gconv`), GCC's runtime, SDL2's add-ons, the libraries of `manifest/base.list` that ports use, OpenAL, PulseAudio's client library (libpulse), mpg123, libmodplug, and what else of stock's `/usr/lib32` Buildroot has (SDL2_gfx, libltdl, opusfile, pixman, speex, Tremor, zstd) | `/usr/lib32` | system layer: BasedOS's 32-bit Buildroot root (`buildroot/configs/basedos_gkd350hultra_armhf_defconfig`), the paths `manifest/base32.list` names plus what they need |
+| SDL2 and librga | `/usr/lib32` | system layer: BasedOS's own (`SDL2_ARCH=armhf tools/sdl2/build.sh`), the same patches as the 64-bit one, so 32-bit ports get the turned picture too; with PulseAudio output as well as ALSA |
 | Mali G52 GLES/EGL driver (32-bit) and its GL API wrappers | `/usr/lib32` | stock's own `/usr/lib32`, linked from `/stock` (`manifest/harvest.list`) |
 
 The 32-bit loader looks only in `/usr/lib32`, and its iconv() loads modules from
@@ -31,6 +31,14 @@ What stock's `/usr/lib32` has and BasedOS's doesn't is listed at every build
 libraries. Left today: libxml2.so.2 (Buildroot's libxml2 is 2.15, `.so.16`), libxmp and SDL2_sound
 (no Buildroot package), libepoxy and glfw (they need desktop GL or a windowing system), librga.so.2
 (stock's older librga; BasedOS's is 1.10.5), 32-bit Vulkan.
+
+## Sound
+
+ALSA's `default` device is PipeWire's (`pcm.pipewire`), and its ALSA plugin is 64-bit only: a
+32-bit program's ALSA can't load it (`wrong ELF class`). 32-bit programs reach PipeWire through its
+PulseAudio server (`pipewire-pulse`) instead: OpenAL and BasedOS's 32-bit SDL2 both try PulseAudio
+before ALSA, and load `/usr/lib32/libpulse.so.0` for it. A 32-bit program that opens ALSA itself
+stays silent.
 
 ## Tested (2026-11-19)
 

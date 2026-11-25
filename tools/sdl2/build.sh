@@ -26,7 +26,10 @@
 #   build.sh <stock SYSTEM squashfs> <out dir> [270|90]
 #   SDL2_ARCH=armhf build.sh ...  the same for 32-bit ports (/usr/lib32), with BasedOS's 32-bit
 #                                 Buildroot toolchain (tools/buildroot/build.sh --armhf build)
-#                                 and stock's 32-bit libraries to link against
+#                                 and stock's 32-bit libraries to link against; it also
+#                                 loads libpulse (PulseAudio's client, from that Buildroot root):
+#                                 32-bit programs can't load PipeWire's 64-bit ALSA plugin, so
+#                                 they reach PipeWire's PulseAudio server instead
 # tools/wsl/build.sh runs it into prepared/sdl2 when that is missing.
 set -euo pipefail
 
@@ -37,11 +40,12 @@ ROT=${3:-270}
 ARCH=${SDL2_ARCH:-aarch64}
 case "$ARCH" in
 aarch64)
-    CROSS=aarch64-linux-gnu PROC=aarch64 STOCK_LIB=usr/lib
+    CROSS=aarch64-linux-gnu PROC=aarch64 STOCK_LIB=usr/lib PULSE=OFF
     W=${SDL2_WORK:-$HOME/basedos-sdl2} ;;
 armhf)
-    CROSS=${SDL2_CROSS:-$HOME/basedos-br/out-armhf/host/bin/arm-buildroot-linux-gnueabihf}
-    PROC=arm STOCK_LIB=usr/lib32
+    BR32=${BR32_OUT:-$HOME/basedos-br/out-armhf}
+    CROSS=${SDL2_CROSS:-$BR32/host/bin/arm-buildroot-linux-gnueabihf}
+    PROC=arm STOCK_LIB=usr/lib32 PULSE=ON
     W=${SDL2_WORK:-$HOME/basedos-sdl2-armhf} ;;
 *) echo "SDL2_ARCH must be aarch64 or armhf" >&2; exit 1 ;;
 esac
@@ -109,6 +113,14 @@ Cflags: -I\${includedir} $cflags
 Libs: -L\${libdir} -l$lib
 EOF
 done
+# libpulse's headers and library from the 32-bit Buildroot root (only its name is linked against:
+# SDL loads it at run time).
+if [ "$PULSE" = ON ]; then
+    cp -r "$BR32/staging/usr/include/pulse" "$SR/usr/include/"
+    cp -a "$BR32/staging/usr/lib/"libpulse.so* "$SR/usr/lib/"
+    printf 'prefix=%s/usr\nName: libpulse\nDescription: libpulse (Buildroot armhf)\nVersion: 17.0\nCflags: -I${prefix}/include\nLibs: -L${prefix}/lib -lpulse\n' \
+        "$SR" > "$SR/usr/lib/pkgconfig/libpulse.pc"
+fi
 # SDL's KMSDRM check wants an egl module too; SDL brings its own EGL headers and loads libEGL at
 # run time, so it needs no flags.
 printf 'Name: egl\nDescription: libEGL (loaded at run time)\nVersion: 99\nCflags:\nLibs:\n' \
@@ -141,9 +153,13 @@ cmake -S . -B build -G Ninja \
     -DSDL_WAYLAND=OFF -DSDL_COCOA=OFF -DSDL_DIRECTFB=OFF -DSDL_VIVANTE=OFF -DSDL_FUSIONSOUND=OFF \
     -DSDL_DUMMYVIDEO=OFF -DSDL_PTHREADS=ON -DSDL_PTHREADS_SEM=ON -DSDL_DIRECTX=OFF \
     -DSDL_CLOCK_GETTIME=OFF -DSDL_RPATH=OFF -DSDL_RENDER_D3D=OFF -DSDL_X11=OFF \
-    -DSDL_OPENGL=OFF -DSDL_OPENGLES=ON -DSDL_VULKAN=ON -DSDL_KMSDRM=ON -DSDL_PULSEAUDIO=OFF \
+    -DSDL_OPENGL=OFF -DSDL_OPENGLES=ON -DSDL_VULKAN=ON -DSDL_KMSDRM=ON -DSDL_PULSEAUDIO=$PULSE -DSDL_PULSEAUDIO_SHARED=$PULSE \
     -DSDL_PIPEWIRE=OFF -DSDL_TEST=OFF
 cmake --build build
+if [ "$PULSE" = ON ]; then
+    grep -q '^#define SDL_AUDIO_DRIVER_PULSEAUDIO_DYNAMIC "libpulse.so.0"' build/include-config-release/SDL2/SDL_config.h ||
+        { echo "PulseAudio was not enabled" >&2; exit 1; }
+fi
 # The rotation lives in the KMSDRM driver, and librga must be linked for it.
 grep -q '^#define SDL_VIDEO_DRIVER_KMSDRM 1' build/include-config-release/SDL2/SDL_config.h ||
     { echo "KMSDRM was not enabled" >&2; exit 1; }
@@ -160,6 +176,7 @@ $CROSS-strip "$OUT/$RGA_SO"
     echo "librga $RGA_COMMIT ($RGA_SO)"
     echo "rotation $ROT"
     echo "arch $ARCH"
+    echo "pulseaudio $PULSE"
     for p in "$HERE/patches/"sdl2-patch*; do echo "patch ${p##*/} $(sha256sum "$p" | cut -c1-16)"; done
     (cd "$OUT" && sha256sum "libSDL2-2.0.so.0.$SDL_EXT" "$RGA_SO")
 } > "$OUT/libSDL2.build-info"

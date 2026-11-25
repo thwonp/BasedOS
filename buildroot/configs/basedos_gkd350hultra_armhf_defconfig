@@ -81,6 +81,11 @@ BR2_PACKAGE_TIFF=y
 BR2_PACKAGE_OPENAL=y
 BR2_PACKAGE_MPG123=y
 BR2_PACKAGE_LIBMODPLUG=y
+# The sound server's client library: 32-bit programs can't load PipeWire's 64-bit ALSA plugin
+# (ALSA's "default" is PipeWire's), so they reach PipeWire's PulseAudio server instead. OpenAL
+# gets its PulseAudio backend from this (openal.mk), and BasedOS's 32-bit SDL2 loads it too
+# (tools/sdl2). Only libpulse goes to /usr/lib32 (manifest/base32.list).
+BR2_PACKAGE_PULSEAUDIO=y
 
 # What else stock's /usr/lib32 has that ports may load (tools/lib32-gaps.py, 2026-11-19), where
 # Buildroot has it. Not here: libxml2.so.2 (Buildroot's is 2.15, libxml2.so.16), libxmp and

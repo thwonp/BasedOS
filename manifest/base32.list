@@ -33,8 +33,10 @@
 /usr/lib/libdrm.so.2
 /usr/lib/libdrm.so
 
-## loaded at run time by SDL2 (ALSA, udev), so the closure can't see them
+## loaded at run time by SDL2 and OpenAL (ALSA, PulseAudio, udev), so the closure can't see them;
+## libpulse is how 32-bit programs reach PipeWire (its PulseAudio server)
 /usr/lib/libasound.so.2
+/usr/lib/libpulse.so.0
 /usr/lib/libudev.so.1
 /usr/lib/libudev.so
 

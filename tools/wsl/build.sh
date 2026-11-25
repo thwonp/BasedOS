@@ -30,6 +30,8 @@ sdl2_current() {
 	[ -f "$_i" ] || return 1
 	_a=$(sed -n 's/^arch //p' "$_i")
 	[ "${_a:-aarch64}" = "$2" ] || return 1
+	# The 32-bit build loads libpulse (tools/sdl2/build.sh); builds from before that don't.
+	[ "$2" = aarch64 ] || grep -qx 'pulseaudio ON' "$_i" || return 1
 	for _c in SDL_COMMIT:SDL RGA_COMMIT:librga; do
 		_v=$(sed -n "s/^${_c%%:*}=\([0-9a-f]*\).*/\1/p" "$REPO/tools/sdl2/build.sh")
 		grep -q "^${_c#*:} $_v " "$_i" || return 1
