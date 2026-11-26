@@ -33,6 +33,7 @@ are:
 | Part | From | License | In this repo? |
 |---|---|---|---|
 | BasedOS scripts and config (`overlay/`, `initrd/`) | this repo | MIT | yes |
+| BasedOS's Vulkan rotation layer (`libVkLayer_basedos_rotate.so` and its manifest; `buildroot/package/basedos-vkrotate`) | this repo, built by BasedOS's Buildroot | MIT | yes |
 | The boot screen's font (`tools/boot-ui/font.h`, in `basedos-splash`) | converted from Terminus Font (bold 16x32), Copyright (c) 2010 Dimitar Toshkov Zhekov, by `tools/boot-ui/mkfont.py` | SIL Open Font License 1.1 (`tools/boot-ui/OFL-Terminus.txt`, also in the image at `/usr/share/licenses/basedos-splash/`) | yes |
 | BusyBox (`busybox-static`, aarch64) | Alpine Linux v3.20, downloaded at build time | GPL-2.0 | no |
 | BasedOS's userland (`manifest/base.list`): glibc 2.41 and GCC 14's runtime, OpenSSH, wpa_supplicant and `wpa_cli`, iw, e2fsprogs, dosfstools, exfatprogs, ALSA, Wayland's and libdrm's libraries, the Vulkan loader, OpenSSL, the D-Bus library, glib, SDL2_image, SDL2_ttf, and the libraries spruce and PortMaster's ports expect | built from source by Buildroot 2025.02.20 (sha256 pinned) with this repo's `buildroot/` tree (`tools/buildroot/build.sh`) | each package's own: GPL-2.0/3.0, LGPL-2.1, BSD, MIT, zlib and others; Buildroot's `make legal-info` lists every package with its licence and source | the build configuration only |

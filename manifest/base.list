@@ -37,6 +37,10 @@
 /usr/lib/libdrm.so
 ## the Khronos Vulkan loader (Mali's Vulkan driver is its ICD)
 /usr/lib/libvulkan.so.1
+# BasedOS's implicit layer (package basedos-vkrotate): VK_KHR_display apps (RetroArch's Vulkan driver)
+# see the portrait panel as landscape, and their frames are turned onto it on present
+/usr/lib/libVkLayer_basedos_rotate.so
+/usr/share/vulkan/implicit_layer.d/VkLayer_basedos_rotate.json
 
 ## ssh (BasedOS's own, maintenance mode; keys live on /data)
 /usr/sbin/sshd

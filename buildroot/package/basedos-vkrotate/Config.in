@@ -1,0 +1,10 @@
+config BR2_PACKAGE_BASEDOS_VKROTATE
+	bool "basedos-vkrotate"
+	depends on BR2_PACKAGE_VULKAN_LOADER
+	help
+	  VK_LAYER_BASEDOS_rotate, an implicit Vulkan layer: apps that
+	  draw straight to the display through VK_KHR_display (RetroArch's
+	  Vulkan driver) see the 350H Ultra's 1440x1600 portrait panel as
+	  1600x1440 landscape, and the layer turns each frame onto the
+	  panel when it is presented. The Vulkan counterpart of BasedOS's
+	  SDL2 rotation patch (tools/sdl2). BasedOS's own source, in src/.

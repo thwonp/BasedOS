@@ -34,6 +34,8 @@ BR2_PACKAGE_EUDEV=y
 BR2_PACKAGE_WAYLAND=y
 BR2_PACKAGE_LIBDRM=y
 BR2_PACKAGE_VULKAN_LOADER=y
+# Its implicit layer that turns VK_KHR_display apps onto the portrait panel (package/basedos-vkrotate).
+BR2_PACKAGE_BASEDOS_VKROTATE=y
 
 # BasedOS's own services and tools (were stock's).
 BR2_PACKAGE_OPENSSH=y
