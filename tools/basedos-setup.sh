@@ -53,7 +53,7 @@ fi
 HERE=$(cd "$(dirname "$0")" && pwd)
 # The release this script belongs to (tools/wsl/release.sh writes it in).
 RELEASE_TAG=@RELEASE_TAG@
-RELEASE_URL=https://github.com/theycallmeboxy/BasedOS/releases/download/$RELEASE_TAG
+RELEASE_URL=https://github.com/thwonp/BasedOS/releases/download/$RELEASE_TAG
 STOCK_P1=/flash
 T=/tmp/basedos-setup            # RAM: nothing of setup's own goes on the eMMC
 DL=$T/release

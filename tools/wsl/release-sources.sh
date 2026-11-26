@@ -56,7 +56,7 @@ cat > "$S/README.txt" <<EOF
 Sources for BasedOS $TAG (GKD 350H Ultra), as its NOTICE.md requires of a release.
 
 BasedOS's own code (MIT) is the repository at tag $TAG:
-  https://github.com/theycallmeboxy/BasedOS/tree/$TAG
+  https://github.com/thwonp/BasedOS/tree/$TAG
 It holds the build configuration used: buildroot/ (the Buildroot external tree and defconfigs),
 tools/ (the build scripts), overlay/ and initrd/.
 
